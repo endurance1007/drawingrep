@@ -3,116 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portrait Studio Pro | Fixed</title>
+    <title>Real Ref Studio | Pexels Based</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body.fullscreen-active { overflow: hidden; }
-        .img-container img { transition: opacity 0.3s ease, transform 0.5s ease; }
+        .img-card { transition: all 0.5s ease; opacity: 0; transform: scale(0.95); }
+        .img-card.loaded { opacity: 1; transform: scale(1); }
     </style>
 </head>
-<body class="bg-[#0a0a0a] text-gray-200 min-h-screen p-4 sm:p-8">
+<body class="bg-[#080808] text-gray-100 min-h-screen p-4 sm:p-10 font-sans">
 
-    <header class="max-w-6xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-end gap-4 border-b border-gray-800 pb-6">
+    <header class="max-w-7xl mx-auto mb-12 flex flex-col md:flex-row justify-between items-center gap-6 border-b border-white/5 pb-10">
         <div>
-            <h1 class="text-3xl font-black italic text-purple-500 mb-2 tracking-tighter">STUDIO PRO <span class="text-xs bg-purple-900 text-purple-200 px-2 py-1 rounded ml-2 not-italic font-normal">v2.1</span></h1>
-            <p class="text-sm text-gray-500">캐시 중복 방지 로직이 적용되었습니다.</p>
+            <h1 class="text-3xl font-light tracking-widest text-white uppercase">Real <span class="font-bold text-blue-500">Reference</span></h1>
+            <p class="text-xs text-gray-500 mt-2">AI가 아닌 실제 사진 작가들의 포트폴리오를 불러옵니다.</p>
         </div>
-        <div class="flex gap-3 w-full md:w-auto">
-            <select id="poseSelect" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none">
-                <option value="fullbody,standing">전신 (Full Body)</option>
-                <option value="portrait,face,closeup" selected>얼굴 (Portrait)</option>
+
+        <div class="flex flex-wrap justify-center gap-4">
+            <select id="gender" class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none">
+                <option value="woman">Woman</option>
+                <option value="man">Man</option>
+                <option value="person">Both</option>
             </select>
-            <select id="genderSelect" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none">
-                <option value="woman,female" selected>여성 (Woman)</option>
-                <option value="man,male">남성 (Man)</option>
+            <select id="pose" class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none">
+                <option value="full body">Full Body (전신)</option>
+                <option value="portrait">Portrait (상반신/얼굴)</option>
+                <option value="action">Action / Movement</option>
             </select>
-            <button onclick="refreshBoard()" class="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2 rounded-lg font-bold transition-all active:scale-95">
-                새 모델 섭외
+            <button onclick="loadNewBatch()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-lg font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20">
+                모델 호출
             </button>
         </div>
     </header>
 
-    <main id="imageGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+    <main id="imageGrid" class="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-7xl mx-auto">
         </main>
 
-    <div id="fullscreenOverlay" class="fixed inset-0 z-50 bg-black/95 hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeFullscreen()">
-        <img id="fullscreenImage" src="" alt="Fullscreen" class="max-w-full max-h-full object-contain shadow-2xl rounded-lg">
+    <div id="overlay" class="fixed inset-0 z-50 bg-black/95 hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeFS()">
+        <img id="overlayImg" src="" class="max-w-full max-h-full object-contain shadow-2xl">
+        <p class="absolute bottom-10 text-gray-500 text-sm">다시 클릭하면 돌아갑니다</p>
     </div>
 
     <script>
+        // 발급받은 API Key를 여기에 넣어주세요!
+        const API_KEY = 'GyPRdtANcIlgVwBA0UyGKyXnXfjIExjZdVfprscf3SocW5Ik9Ic2xWmX'; 
         const grid = document.getElementById('imageGrid');
-        const overlay = document.getElementById('fullscreenOverlay');
-        const fsImage = document.getElementById('fullscreenImage');
 
-        window.onload = () => refreshBoard();
+        async function loadNewBatch() {
+            if (API_KEY === 'GyPRdtANcIlgVwBA0UyGKyXnXfjIExjZdVfprscf3SocW5Ik9Ic2xWmX') {
+                alert('Pexels API Key를 코드에 입력해주세요!');
+                return;
+            }
 
-        function refreshBoard() {
-            grid.innerHTML = '';
-            for (let i = 0; i < 3; i++) {
-                // i를 넘겨서 각기 다른 lock 번호를 생성하게 함
-                grid.appendChild(createCard(i));
+            grid.innerHTML = '<div class="col-span-full text-center py-20 text-gray-500 animate-pulse text-xl">실제 사진을 찾는 중...</div>';
+            
+            const gender = document.getElementById('gender').value;
+            const pose = document.getElementById('pose').value;
+            const query = `${gender} ${pose}`;
+            
+            // 중복 방지: 랜덤 페이지(1~50)에서 20개를 가져와 그중 3개를 섞어 씁니다.
+            const randomPage = Math.floor(Math.random() * 50) + 1;
+            const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=20&page=${randomPage}`;
+
+            try {
+                const response = await fetch(url, {
+                    headers: { Authorization: API_KEY }
+                });
+                const data = await response.json();
+                
+                if (data.photos && data.photos.length >= 3) {
+                    // 20개 중 무작위 3개 추출 (중복 절대 없음)
+                    const shuffled = data.photos.sort(() => 0.5 - Math.random());
+                    renderImages(shuffled.slice(0, 3));
+                } else {
+                    grid.innerHTML = '<p class="col-span-full text-center text-red-400">사진이 부족합니다. 다른 키워드로 시도해보세요.</p>';
+                }
+            } catch (err) {
+                grid.innerHTML = '<p class="col-span-full text-center text-red-400">연결 에러. API 키를 확인해주세요.</p>';
             }
         }
 
-        function createCard(index) {
-            const card = document.createElement('div');
-            card.className = 'relative group bg-gray-900 rounded-2xl overflow-hidden shadow-lg aspect-[3/4] img-container';
-            
-            const url = generateRandomUrl(index);
-
-            card.innerHTML = `
-                <img src="${url}" 
-                     class="w-full h-full object-cover cursor-zoom-in group-hover:scale-105" 
-                     onclick="openFullscreen(this.src)"
-                     onload="this.style.opacity=1"
-                     style="opacity: 0">
+        function renderImages(photos) {
+            grid.innerHTML = '';
+            photos.forEach(photo => {
+                const card = document.createElement('div');
+                card.className = 'img-card relative bg-gray-900 rounded-sm overflow-hidden aspect-[2/3] cursor-zoom-in group';
                 
-                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent p-4 translate-y-full group-hover:translate-y-0 transition-transform flex justify-center">
-                    <button onclick="refreshSingleImage(this.closest('.relative'))" 
-                            class="bg-white/20 hover:bg-white/40 text-white p-2 rounded-full backdrop-blur-md transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                        </svg>
-                    </button>
-                </div>
-            `;
-            return card;
+                // 원본 사진 화질을 위해 large2x 사용
+                card.innerHTML = `
+                    <img src="${photo.src.large2x}" 
+                         class="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:brightness-110" 
+                         onclick="openFS('${photo.src.original}')"
+                         onload="this.parentElement.classList.add('loaded')">
+                    <div class="absolute bottom-0 left-0 p-4 bg-gradient-to-t from-black/80 to-transparent w-full opacity-0 group-hover:opacity-100 transition-opacity">
+                        <p class="text-[10px] text-gray-400 uppercase tracking-widest">Photographer: ${photo.photographer}</p>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
         }
 
-        // 핵심: 절대 겹치지 않는 URL 생성기
-        function generateRandomUrl(offset = 0) {
-            const pose = document.getElementById('poseSelect').value;
-            const gender = document.getElementById('genderSelect').value;
-            // 1. 매번 바뀌는 타임스탬프 + 2. 인덱스 오프셋 + 3. 아주 큰 랜덤수
-            const seed = Date.now() + offset + Math.floor(Math.random() * 1000);
-            return `https://loremflickr.com/800/1200/${pose},${gender}/all?lock=${seed}`;
-        }
-
-        function refreshSingleImage(cardElement) {
-            const img = cardElement.querySelector('img');
-            img.style.opacity = '0.3'; // 로딩 표시 대신 투명도 조절
-            
-            const newUrl = generateRandomUrl(Math.random() * 500);
-            
-            // 프리로딩 후 교체 (깜빡임 방지)
-            const tempImg = new Image();
-            tempImg.src = newUrl;
-            tempImg.onload = () => {
-                img.src = newUrl;
-                img.style.opacity = '1';
-            };
-        }
-
-        function openFullscreen(src) {
-            fsImage.src = src;
-            overlay.classList.replace('hidden', 'flex');
+        function openFS(src) {
+            document.getElementById('overlayImg').src = src;
+            document.getElementById('overlay').classList.replace('hidden', 'flex');
             document.body.classList.add('fullscreen-active');
         }
 
-        function closeFullscreen() {
-            overlay.classList.replace('flex', 'hidden');
+        function closeFS() {
+            document.getElementById('overlay').classList.replace('flex', 'hidden');
             document.body.classList.remove('fullscreen-active');
         }
+
+        window.onload = loadNewBatch;
     </script>
 </body>
 </html>
