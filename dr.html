@@ -3,100 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real Ref Studio | Pexels Based</title>
+    <title>Ref-Studio | Pro Version</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body.fullscreen-active { overflow: hidden; }
-        .img-card { transition: all 0.5s ease; opacity: 0; transform: scale(0.95); }
-        .img-card.loaded { opacity: 1; transform: scale(1); }
+        .img-card { opacity: 0; transform: translateY(10px); transition: all 0.6s ease; }
+        .img-card.loaded { opacity: 1; transform: translateY(0); }
+        .loader { border-top-color: #3b82f6; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-[#080808] text-gray-100 min-h-screen p-4 sm:p-10 font-sans">
+<body class="bg-[#050505] text-gray-200 min-h-screen p-4 sm:p-10">
 
-    <header class="max-w-7xl mx-auto mb-12 flex flex-col md:flex-row justify-between items-center gap-6 border-b border-white/5 pb-10">
-        <div>
-            <h1 class="text-3xl font-light tracking-widest text-white uppercase">Real <span class="font-bold text-blue-500">Reference</span></h1>
-            <p class="text-xs text-gray-500 mt-2">AI가 아닌 실제 사진 작가들의 포트폴리오를 불러옵니다.</p>
+    <header class="max-w-6xl mx-auto mb-10 border-b border-white/10 pb-8 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div class="text-center md:text-left">
+            <h1 class="text-3xl font-black italic tracking-tighter text-blue-500">REF-STUDIO PRO</h1>
+            <p id="statusText" class="text-xs text-gray-500 mt-1 uppercase tracking-widest font-mono">Status: Ready</p>
         </div>
 
-        <div class="flex flex-wrap justify-center gap-4">
-            <select id="gender" class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none">
-                <option value="woman">Woman</option>
-                <option value="man">Man</option>
-                <option value="person">Both</option>
+        <div class="flex flex-wrap justify-center gap-3">
+            <select id="gender" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="woman model">여성 (Woman)</option>
+                <option value="man model">남성 (Man)</option>
+                <option value="people">모두 (All)</option>
             </select>
-            <select id="pose" class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none">
-                <option value="full body">Full Body (전신)</option>
-                <option value="portrait">Portrait (상반신/얼굴)</option>
-                <option value="action">Action / Movement</option>
+            <select id="pose" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="full body shot">전신 (Full Body)</option>
+                <option value="portrait face">상반신 (Portrait)</option>
+                <option value="dynamic action pose">역동적 포즈 (Action)</option>
             </select>
-            <button onclick="loadNewBatch()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-lg font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20">
+            <button onclick="fetchThreeImages()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-full font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20">
                 모델 호출
             </button>
         </div>
     </header>
 
-    <main id="imageGrid" class="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-7xl mx-auto">
+    <main id="imageGrid" class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
         </main>
 
-    <div id="overlay" class="fixed inset-0 z-50 bg-black/95 hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeFS()">
+    <div id="overlay" class="fixed inset-0 z-50 bg-black/98 hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeFS()">
         <img id="overlayImg" src="" class="max-w-full max-h-full object-contain shadow-2xl">
-        <p class="absolute bottom-10 text-gray-500 text-sm">다시 클릭하면 돌아갑니다</p>
     </div>
 
     <script>
-        // 발급받은 API Key를 여기에 넣어주세요!
-        const API_KEY = GyPRdtANcIlgVwBA0UyGKyXnXfjIExjZdVfprscf3SocW5Ik9Ic2xWmX; 
+        // 작가님이 주신 소중한 API KEY
+        const API_KEY = 'GyPRdtANcIlgVwBA0UyGKyXnXfjIExjZdVfprscf3SocW5Ik9Ic2xWmX';
         const grid = document.getElementById('imageGrid');
+        const statusText = document.getElementById('statusText');
 
-        async function loadNewBatch() {
-            if (API_KEY === GyPRdtANcIlgVwBA0UyGKyXnXfjIExjZdVfprscf3SocW5Ik9Ic2xWmX) {
-                alert('Pexels API Key를 코드에 입력해주세요!');
-                return;
-            }
+        // 초기 실행
+        window.onload = fetchThreeImages;
 
-            grid.innerHTML = '<div class="col-span-full text-center py-20 text-gray-500 animate-pulse text-xl">실제 사진을 찾는 중...</div>';
+        async function fetchThreeImages() {
+            statusText.innerText = "Status: Calling Models...";
+            grid.innerHTML = '<div class="col-span-full flex justify-center py-20"><div class="loader w-10 h-10 border-4 border-gray-800 rounded-full"></div></div>';
             
             const gender = document.getElementById('gender').value;
             const pose = document.getElementById('pose').value;
             const query = `${gender} ${pose}`;
             
-            // 중복 방지: 랜덤 페이지(1~50)에서 20개를 가져와 그중 3개를 섞어 씁니다.
-            const randomPage = Math.floor(Math.random() * 50) + 1;
-            const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=20&page=${randomPage}`;
+            // 중복 방지: 랜덤 페이지 (1~100)
+            const randomPage = Math.floor(Math.random() * 100) + 1;
+            const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=15&page=${randomPage}`;
 
             try {
                 const response = await fetch(url, {
-                    headers: { Authorization: API_KEY }
+                    method: 'GET',
+                    headers: {
+                        'Authorization': API_KEY
+                    }
                 });
+
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
                 const data = await response.json();
                 
                 if (data.photos && data.photos.length >= 3) {
-                    // 20개 중 무작위 3개 추출 (중복 절대 없음)
+                    // 받아온 15개 중 무작위로 3개 선택
                     const shuffled = data.photos.sort(() => 0.5 - Math.random());
                     renderImages(shuffled.slice(0, 3));
+                    statusText.innerText = "Status: Success (Real Photos)";
                 } else {
-                    grid.innerHTML = '<p class="col-span-full text-center text-red-400">사진이 부족합니다. 다른 키워드로 시도해보세요.</p>';
+                    statusText.innerText = "Status: No images found.";
+                    grid.innerHTML = '<p class="col-span-full text-center">검색 결과가 없습니다. 조건을 바꿔보세요.</p>';
                 }
-            } catch (err) {
-                grid.innerHTML = '<p class="col-span-full text-center text-red-400">연결 에러. API 키를 확인해주세요.</p>';
+            } catch (error) {
+                console.error("API Fetch Error:", error);
+                statusText.innerText = `Status: Error (${error.message})`;
+                grid.innerHTML = `<p class="col-span-full text-center text-red-500">API 호출 실패! <br> 키가 유효하지 않거나 네트워크 문제입니다.</p>`;
             }
         }
 
         function renderImages(photos) {
             grid.innerHTML = '';
-            photos.forEach(photo => {
+            photos.forEach((photo, idx) => {
                 const card = document.createElement('div');
-                card.className = 'img-card relative bg-gray-900 rounded-sm overflow-hidden aspect-[2/3] cursor-zoom-in group';
+                card.className = 'img-card relative bg-gray-900 rounded-lg overflow-hidden aspect-[3/4] cursor-zoom-in group';
                 
-                // 원본 사진 화질을 위해 large2x 사용
+                // Pexels의 large 화질 사용
                 card.innerHTML = `
-                    <img src="${photo.src.large2x}" 
-                         class="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:brightness-110" 
+                    <img src="${photo.src.large}" 
+                         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
                          onclick="openFS('${photo.src.original}')"
                          onload="this.parentElement.classList.add('loaded')">
-                    <div class="absolute bottom-0 left-0 p-4 bg-gradient-to-t from-black/80 to-transparent w-full opacity-0 group-hover:opacity-100 transition-opacity">
-                        <p class="text-[10px] text-gray-400 uppercase tracking-widest">Photographer: ${photo.photographer}</p>
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-end p-4">
+                        <span class="text-[10px] text-gray-300 uppercase">Photographer: ${photo.photographer}</span>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -104,8 +115,9 @@
         }
 
         function openFS(src) {
+            const overlay = document.getElementById('overlay');
             document.getElementById('overlayImg').src = src;
-            document.getElementById('overlay').classList.replace('hidden', 'flex');
+            overlay.classList.replace('hidden', 'flex');
             document.body.classList.add('fullscreen-active');
         }
 
@@ -113,8 +125,6 @@
             document.getElementById('overlay').classList.replace('flex', 'hidden');
             document.body.classList.remove('fullscreen-active');
         }
-
-        window.onload = loadNewBatch;
     </script>
 </body>
 </html>
