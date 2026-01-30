@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspo-Flow | Reference Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .masonry { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); grid-gap: 1rem; }
+        .img-card { break-inside: avoid; transition: transform 0.3s ease; }
+        .img-card:hover { transform: scale(1.02); z-index: 10; }
+    </style>
+</head>
+<body class="bg-[#0f0f0f] text-white min-h-screen p-6">
+
+    <header class="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row justify-between items-center gap-4">
+        <h1 class="text-3xl font-black tracking-tighter italic text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+            INSPO-FLOW
+        </h1>
+        <div class="flex gap-2 w-full md:w-auto">
+            <input type="text" id="keywordInput" placeholder="키워드 입력 (예: forest, urban, neon)" 
+                   class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-purple-500">
+            <button onclick="refreshBoard()" class="bg-purple-600 hover:bg-purple-500 px-6 py-2 rounded-lg font-bold whitespace-nowrap transition">
+                새 영감 불러오기
+            </button>
+        </div>
+    </header>
+
+    <main id="imageGrid" class="masonry max-w-7xl mx-auto">
+        </main>
+
+    <script>
+        const grid = document.getElementById('imageGrid');
+        const input = document.getElementById('keywordInput');
+
+        // 초기 실행
+        window.onload = () => refreshBoard();
+
+        function refreshBoard() {
+            grid.innerHTML = ''; // 기존 이미지 삭제
+            const keyword = input.value || 'aesthetic';
+            
+            // 20개의 이미지를 다양한 소스에서 생성
+            for (let i = 0; i < 20; i++) {
+                const card = document.createElement('div');
+                card.className = 'img-card bg-gray-900 rounded-xl overflow-hidden shadow-lg cursor-pointer';
+                
+                // Unsplash와 Picsum 혼합 (더 많은 소스 추가 가능)
+                const source = Math.random() > 0.3 
+                    ? `https://source.unsplash.com/featured/?${keyword}&sig=${Math.random()}`
+                    : `https://picsum.photos/seed/${Math.random()}/600/800`;
+
+                card.innerHTML = `
+                    <img src="${source}" class="w-full h-auto block loading="lazy" 
+                         onclick="this.src='https://source.unsplash.com/featured/?${keyword}&sig=' + Math.random()">
+                `;
+                grid.appendChild(card);
+            }
+        }
+
+        // 엔터키 지원
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') refreshBoard();
+        });
+    </script>
+</body>
+</html>
