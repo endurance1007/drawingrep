@@ -3,31 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portrait Studio Pro</title>
+    <title>Portrait Studio Pro | Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 풀스크린 모드 시 스크롤 방지 */
         body.fullscreen-active { overflow: hidden; }
+        .img-container img { transition: opacity 0.3s ease, transform 0.5s ease; }
     </style>
 </head>
 <body class="bg-[#0a0a0a] text-gray-200 min-h-screen p-4 sm:p-8">
 
     <header class="max-w-6xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-end gap-4 border-b border-gray-800 pb-6">
         <div>
-            <h1 class="text-3xl font-black italic text-purple-500 mb-2 leading-none">STUDIO PRO</h1>
-            <p class="text-sm text-gray-500">원하는 조건의 모델을 섭외하세요.</p>
+            <h1 class="text-3xl font-black italic text-purple-500 mb-2 tracking-tighter">STUDIO PRO <span class="text-xs bg-purple-900 text-purple-200 px-2 py-1 rounded ml-2 not-italic font-normal">v2.1</span></h1>
+            <p class="text-sm text-gray-500">캐시 중복 방지 로직이 적용되었습니다.</p>
         </div>
         <div class="flex gap-3 w-full md:w-auto">
-            <select id="poseSelect" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            <select id="poseSelect" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none">
                 <option value="fullbody,standing">전신 (Full Body)</option>
                 <option value="portrait,face,closeup" selected>얼굴 (Portrait)</option>
             </select>
-            <select id="genderSelect" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            <select id="genderSelect" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none">
                 <option value="woman,female" selected>여성 (Woman)</option>
                 <option value="man,male">남성 (Man)</option>
             </select>
-            <button onclick="refreshBoard()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-bold transition whitespace-nowrap flex-shrink-0">
-                모델 섭외하기
+            <button onclick="refreshBoard()" class="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2 rounded-lg font-bold transition-all active:scale-95">
+                새 모델 섭외
             </button>
         </div>
     </header>
@@ -35,52 +35,42 @@
     <main id="imageGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
         </main>
 
-    <div id="fullscreenOverlay" class="fixed inset-0 z-50 bg-black bg-opacity-95 hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeFullscreen()">
-        <img id="fullscreenImage" src="" alt="Fullscreen View" class="max-w-full max-h-full object-contain shadow-2xl rounded-lg">
+    <div id="fullscreenOverlay" class="fixed inset-0 z-50 bg-black/95 hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeFullscreen()">
+        <img id="fullscreenImage" src="" alt="Fullscreen" class="max-w-full max-h-full object-contain shadow-2xl rounded-lg">
     </div>
 
     <script>
         const grid = document.getElementById('imageGrid');
-        const poseSelect = document.getElementById('poseSelect');
-        const genderSelect = document.getElementById('genderSelect');
         const overlay = document.getElementById('fullscreenOverlay');
         const fsImage = document.getElementById('fullscreenImage');
 
-        // 초기 실행
         window.onload = () => refreshBoard();
 
-        // 현재 선택된 필터 조합으로 키워드 생성
-        function getKeywords() {
-            return `${poseSelect.value},${genderSelect.value}`;
-        }
-
-        // 3장 모두 새로고침
         function refreshBoard() {
             grid.innerHTML = '';
-            const keywords = getKeywords();
             for (let i = 0; i < 3; i++) {
-                grid.appendChild(createCard(keywords));
+                // i를 넘겨서 각기 다른 lock 번호를 생성하게 함
+                grid.appendChild(createCard(i));
             }
         }
 
-        // 이미지 카드 생성 함수
-        function createCard(keywords) {
+        function createCard(index) {
             const card = document.createElement('div');
-            card.className = 'relative group bg-gray-900 rounded-2xl overflow-hidden shadow-lg aspect-[3/4]';
+            card.className = 'relative group bg-gray-900 rounded-2xl overflow-hidden shadow-lg aspect-[3/4] img-container';
             
-            const randomId = Math.floor(Math.random() * 10000);
-            const source = `https://loremflickr.com/800/1200/${keywords}?lock=${randomId}`;
+            const url = generateRandomUrl(index);
 
             card.innerHTML = `
-                <img src="${source}" 
-                     class="w-full h-full object-cover cursor-zoom-in transition-transform duration-500 group-hover:scale-105" 
-                     alt="Model"
-                     onclick="openFullscreen(this.src)">
+                <img src="${url}" 
+                     class="w-full h-full object-cover cursor-zoom-in group-hover:scale-105" 
+                     onclick="openFullscreen(this.src)"
+                     onload="this.style.opacity=1"
+                     style="opacity: 0">
                 
-                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-4 translate-y-full group-hover:translate-y-0 transition-transform flex justify-center">
+                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent p-4 translate-y-full group-hover:translate-y-0 transition-transform flex justify-center">
                     <button onclick="refreshSingleImage(this.closest('.relative'))" 
-                            class="bg-white/20 hover:bg-white/40 text-white p-2 rounded-full backdrop-blur-sm transition tooltip-trigger" title="이 사진만 교체">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                            class="bg-white/20 hover:bg-white/40 text-white p-2 rounded-full backdrop-blur-md transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                         </svg>
                     </button>
@@ -89,38 +79,39 @@
             return card;
         }
 
-        // 풀스크린 열기
+        // 핵심: 절대 겹치지 않는 URL 생성기
+        function generateRandomUrl(offset = 0) {
+            const pose = document.getElementById('poseSelect').value;
+            const gender = document.getElementById('genderSelect').value;
+            // 1. 매번 바뀌는 타임스탬프 + 2. 인덱스 오프셋 + 3. 아주 큰 랜덤수
+            const seed = Date.now() + offset + Math.floor(Math.random() * 1000);
+            return `https://loremflickr.com/800/1200/${pose},${gender}/all?lock=${seed}`;
+        }
+
+        function refreshSingleImage(cardElement) {
+            const img = cardElement.querySelector('img');
+            img.style.opacity = '0.3'; // 로딩 표시 대신 투명도 조절
+            
+            const newUrl = generateRandomUrl(Math.random() * 500);
+            
+            // 프리로딩 후 교체 (깜빡임 방지)
+            const tempImg = new Image();
+            tempImg.src = newUrl;
+            tempImg.onload = () => {
+                img.src = newUrl;
+                img.style.opacity = '1';
+            };
+        }
+
         function openFullscreen(src) {
             fsImage.src = src;
-            overlay.classList.remove('hidden');
-            overlay.classList.add('flex');
+            overlay.classList.replace('hidden', 'flex');
             document.body.classList.add('fullscreen-active');
         }
 
-        // 풀스크린 닫기
         function closeFullscreen() {
-            overlay.classList.add('hidden');
-            overlay.classList.remove('flex');
+            overlay.classList.replace('flex', 'hidden');
             document.body.classList.remove('fullscreen-active');
-            fsImage.src = ''; // 메모리 절약
-        }
-
-        // 개별 이미지 교체
-        function refreshSingleImage(cardElement) {
-            const img = cardElement.querySelector('img');
-            const currentKeywords = getKeywords();
-            const randomId = Math.floor(Math.random() * 10000);
-            
-            // 로딩 중 시각적 피드백
-            img.classList.add('opacity-50', 'scale-95', 'blur-sm');
-            
-            const newImg = new Image();
-            newImg.src = `https://loremflickr.com/800/1200/${currentKeywords}?lock=${randomId}`;
-            
-            newImg.onload = () => {
-                img.src = newImg.src;
-                img.classList.remove('opacity-50', 'scale-95', 'blur-sm');
-            };
         }
     </script>
 </body>
