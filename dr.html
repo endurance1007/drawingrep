@@ -7,16 +7,21 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body.fullscreen-active { overflow: hidden; }
-        body.bw-mode img { filter: grayscale(100%) contrast(1.1); }
-        body.bw-mode .img-card:hover img { filter: grayscale(0%); }
+        body.bw-mode img { filter: grayscale(100%) contrast(1.15); }
+        body.bw-mode .img-card:hover img { filter: grayscale(0%) contrast(1); }
         
-        .img-card { opacity: 0; transform: translateY(10px); transition: all 0.5s ease; border: 1px solid rgba(255,255,255,0.05); }
+        .img-card { opacity: 0; transform: translateY(10px); transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); border: 1px solid rgba(255,255,255,0.05); }
         .img-card.loaded { opacity: 1; transform: translateY(0); }
+        
         .loader { border-top-color: #3b82f6; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .dragon-gradient { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .dragon-gradient { background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* 핀 이미지 애니메이션 */
+        #pinContainer img { transition: all 0.3s ease; }
+        #pinContainer img:hover { transform: scale(1.05); filter: brightness(1.2); }
     </style>
 </head>
 <body class="bg-[#050505] text-gray-200 min-h-screen p-4 sm:p-10 font-sans">
@@ -24,25 +29,25 @@
     <header class="max-w-7xl mx-auto mb-10 border-b border-white/10 pb-8">
         <div class="flex flex-col lg:flex-row justify-between items-center gap-6">
             <div class="flex items-center gap-3">
-                <span class="text-3xl">🐲</span>
+                <span class="text-4xl">🐲</span>
                 <div>
-                    <h1 class="text-2xl font-black tracking-tight dragon-gradient">지혜의 용 <span class="text-gray-300 font-light">드로잉 연습실</span></h1>
-                    <p id="statusText" class="text-[9px] text-gray-600 mt-1 uppercase tracking-[0.2em] font-mono">System Active: High-Precision Search</p>
+                    <h1 class="text-2xl font-black tracking-tight dragon-gradient uppercase">지혜의 용 <span class="text-gray-400 font-light text-xl">Drawing Lab</span></h1>
+                    <p id="statusText" class="text-[9px] text-gray-600 mt-1 uppercase tracking-[0.2em] font-mono">System: Optimized for Anatomy</p>
                 </div>
             </div>
 
             <div class="flex flex-wrap justify-center items-center gap-3">
-                <input type="text" id="customSearch" placeholder="특정 키워드 (예: ballet)" 
-                       class="bg-gray-900 border border-gray-800 rounded-full px-5 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none w-44">
+                <input type="text" id="customSearch" placeholder="키워드 직접 입력" 
+                       class="bg-gray-900 border border-gray-800 rounded-full px-5 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none w-44 transition-all">
                 
-                <select id="gender" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm outline-none cursor-pointer">
-                    <option value="female solo model">여성 (Woman Only)</option>
-                    <option value="male solo model">남성 (Man Only)</option>
+                <select id="gender" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm outline-none cursor-pointer hover:bg-gray-800 transition">
+                    <option value="female solo model">여성 (Woman)</option>
+                    <option value="male solo model">남성 (Man)</option>
                     <option value="person solo">모두 (Mixed)</option>
                 </select>
                 
-                <select id="pose" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm outline-none cursor-pointer">
-                    <option value="artistic muscular anatomy photography">Anatomy (근육)</option>
+                <select id="pose" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm outline-none cursor-pointer hover:bg-gray-800 transition">
+                    <option value="anatomy">Anatomy (근육/해부학)</option>
                     <option value="full body standing pose">Full Body (전신)</option>
                     <option value="portrait face close-up">Portrait (얼굴)</option>
                     <option value="dynamic action movement">Action (역동)</option>
@@ -53,7 +58,7 @@
                 </button>
 
                 <button onclick="fetchThreeImages()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-full font-bold transition-all active:scale-95 shadow-lg shadow-blue-900/40">
-                    새 모델 섭외
+                    새 모델 호출
                 </button>
             </div>
         </div>
@@ -64,13 +69,14 @@
 
     <section class="max-w-7xl mx-auto border-t border-white/5 pt-10 mb-10">
         <h2 class="text-[10px] font-bold tracking-[0.4em] text-gray-700 mb-6 uppercase">Pinned References</h2>
-        <div id="pinContainer" class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide min-h-[140px]">
-            <p id="pinPlaceholder" class="text-gray-800 italic text-xs self-center w-full text-center">마음에 드는 자료를 핀으로 고정하세요.</p>
+        <div id="pinContainer" class="flex gap-4 overflow-x-auto pb-6 scrollbar-hide min-h-[140px]">
+            <p id="pinPlaceholder" class="text-gray-800 italic text-xs self-center w-full text-center">영감을 주는 사진을 핀으로 고정해 두세요.</p>
         </div>
     </section>
 
     <div id="overlay" class="fixed inset-0 z-50 bg-black/98 hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeFS()">
-        <img id="overlayImg" src="" class="max-w-full max-h-full object-contain">
+        <img id="overlayImg" src="" class="max-w-full max-h-full object-contain shadow-2xl rounded-sm">
+        <p class="absolute bottom-6 text-gray-600 text-[10px] uppercase tracking-widest">Click anywhere to return</p>
     </div>
 
     <script>
@@ -95,39 +101,56 @@
         }
 
         async function fetchThreeImages() {
-            statusText.innerText = "Searching for precise references...";
+            statusText.innerText = "상태: 지능형 쿼리 생성 중...";
             grid.innerHTML = '<div class="col-span-full flex justify-center py-20"><div class="loader w-10 h-10 border-4 border-gray-800 rounded-full"></div></div>';
             
             const gender = document.getElementById('gender').value;
             const pose = document.getElementById('pose').value;
             const custom = document.getElementById('customSearch').value;
             
-            // 정밀도 향상을 위한 쿼리 조합
-            let query = custom ? `${custom} solo` : `${gender} ${pose}`;
-            
-            // Anatomy 모드일 때의 별도 최적화
-            if (pose.includes("anatomy")) {
-                query = `${gender} muscular physique artistic`;
+            let query = "";
+            if (custom) {
+                query = `${custom} solo`;
+            } else {
+                if (pose === "anatomy") {
+                    // 성별에 따른 최적화 키워드 매핑
+                    if (gender.includes("female")) {
+                        query = "female athlete fitness body artistic photography";
+                    } else if (gender.includes("male")) {
+                        query = "male muscular physique anatomy photography";
+                    } else {
+                        query = "muscular physique artistic anatomy";
+                    }
+                } else {
+                    query = `${gender} ${pose}`;
+                }
             }
 
-            const randomPage = Math.floor(Math.random() * 60) + 1;
-            const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=20&page=${randomPage}`;
+            const maxPage = (pose === "anatomy" && gender.includes("female")) ? 20 : 60;
+            const randomPage = Math.floor(Math.random() * maxPage) + 1;
+            const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=25&page=${randomPage}`;
 
             try {
                 const response = await fetch(url, { headers: { 'Authorization': API_KEY } });
                 const data = await response.json();
                 
-                // 결과 중 성별 키워드가 정확히 포함된 사진 위주로 한 번 더 필터링 (선택 사항)
                 if (data.photos && data.photos.length >= 3) {
-                    const shuffled = data.photos.sort(() => 0.5 - Math.random());
+                    let filtered = data.photos;
+                    // 여성 필터 시 남성 오탐지 방지 로직
+                    if (gender.includes("female")) {
+                        filtered = data.photos.filter(p => !p.url.toLowerCase().includes("-man-") && !p.url.toLowerCase().includes("-male-"));
+                    }
+                    
+                    const finalSelection = filtered.length >= 3 ? filtered : data.photos;
+                    const shuffled = finalSelection.sort(() => 0.5 - Math.random());
                     renderGrid(shuffled.slice(0, 3));
-                    statusText.innerText = `Matched: ${query}`;
+                    statusText.innerText = `상태: ${query} 소싱 완료`;
                 } else {
-                    statusText.innerText = "No precise match. Try different keywords.";
-                    grid.innerHTML = '<p class="col-span-full text-center py-10 text-gray-700 font-light underline">일치하는 결과가 없습니다. 조건을 변경해 주세요.</p>';
+                    statusText.innerText = "상태: 일치하는 모델 없음";
+                    grid.innerHTML = '<p class="col-span-full text-center py-10 text-gray-700">결과가 부족합니다. 키워드를 바꿔보세요.</p>';
                 }
             } catch (error) {
-                statusText.innerText = "Connection lost.";
+                statusText.innerText = "상태: 통신 오류";
             }
         }
 
@@ -135,21 +158,21 @@
             grid.innerHTML = '';
             photos.forEach(photo => {
                 const card = document.createElement('div');
-                card.className = 'img-card relative bg-[#0a0a0a] rounded-sm overflow-hidden aspect-[3/4] group';
+                card.className = 'img-card relative bg-[#0a0a0a] rounded-sm overflow-hidden aspect-[3/4] group shadow-2xl';
                 
                 card.innerHTML = `
-                    <img src="${photo.src.large}" class="w-full h-full object-cover cursor-zoom-in group-hover:scale-110 transition-all duration-1000 ease-in-out" 
+                    <img src="${photo.src.large}" class="w-full h-full object-cover cursor-zoom-in group-hover:scale-105 transition-all duration-1000" 
                          onclick="openFS('${photo.src.original}')" onload="this.parentElement.classList.add('loaded')">
                     
                     <button onclick="pinImage('${photo.src.large}', '${photo.src.original}')" 
-                            class="absolute top-4 right-4 bg-white/10 hover:bg-blue-600 text-white p-2.5 rounded-full opacity-0 group-hover:opacity-100 transition-all z-10 backdrop-blur-md">
+                            class="absolute top-4 right-4 bg-black/60 hover:bg-blue-600 text-white p-2.5 rounded-full opacity-0 group-hover:opacity-100 transition-all z-10 backdrop-blur-md">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
                         </svg>
                     </button>
                     
-                    <div class="absolute bottom-0 inset-x-0 p-3 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex justify-between items-center">
-                        <span class="text-[8px] text-gray-500 uppercase font-mono">${photo.photographer}</span>
+                    <div class="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span class="text-[8px] text-gray-500 uppercase font-mono tracking-tighter">${photo.photographer}</span>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -159,7 +182,7 @@
         function pinImage(thumb, original) {
             if (pinnedImages.some(img => img.original === original)) return;
             pinnedImages.unshift({ thumb, original });
-            if (pinnedImages.length > 12) pinnedImages.pop();
+            if (pinnedImages.length > 15) pinnedImages.pop();
             saveAndRenderPins();
         }
 
@@ -182,8 +205,8 @@
             document.getElementById('pinPlaceholder').classList.add('hidden');
             pinContainer.innerHTML = pinnedImages.map(img => `
                 <div class="relative flex-shrink-0 group">
-                    <img src="${img.thumb}" class="h-28 w-20 object-cover rounded shadow-2xl cursor-zoom-in" onclick="openFS('${img.original}')">
-                    <button onclick="unpinImage('${img.original}')" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <img src="${img.thumb}" class="h-28 w-20 object-cover rounded shadow-lg cursor-zoom-in" onclick="openFS('${img.original}')">
+                    <button onclick="unpinImage('${img.original}')" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
                           <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
                         </svg>
