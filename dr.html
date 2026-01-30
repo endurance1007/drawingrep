@@ -3,121 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ref-Studio | Pro Version</title>
+    <title>Ref-Studio | Ultimate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body.fullscreen-active { overflow: hidden; }
-        .img-card { opacity: 0; transform: translateY(10px); transition: all 0.6s ease; }
+        /* 흑백 모드 필터 */
+        body.bw-mode img { filter: grayscale(100%); }
+        body.bw-mode .img-card:hover img { filter: grayscale(0%); } /* 호버 시에만 컬러 */
+        
+        .img-card { opacity: 0; transform: translateY(10px); transition: all 0.5s ease; }
         .img-card.loaded { opacity: 1; transform: translateY(0); }
         .loader { border-top-color: #3b82f6; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* 핀 섹션 애니메이션 */
+        #pinContainer img { transition: transform 0.3s; }
+        #pinContainer img:hover { transform: scale(1.1); }
     </style>
 </head>
 <body class="bg-[#050505] text-gray-200 min-h-screen p-4 sm:p-10">
 
-    <header class="max-w-6xl mx-auto mb-10 border-b border-white/10 pb-8 flex flex-col md:flex-row justify-between items-center gap-6">
-        <div class="text-center md:text-left">
-            <h1 class="text-3xl font-black italic tracking-tighter text-blue-500">REF-STUDIO PRO</h1>
-            <p id="statusText" class="text-xs text-gray-500 mt-1 uppercase tracking-widest font-mono">Status: Ready</p>
-        </div>
+    <header class="max-w-7xl mx-auto mb-10 border-b border-white/10 pb-8">
+        <div class="flex flex-col lg:flex-row justify-between items-center gap-6">
+            <div>
+                <h1 class="text-3xl font-black italic tracking-tighter text-blue-500">지혜의 용 REF-STUDIO</h1>
+                <p id="statusText" class="text-[10px] text-gray-500 mt-1 uppercase tracking-[0.2em] font-mono">Status: Ready</p>
+            </div>
 
-        <div class="flex flex-wrap justify-center gap-3">
-            <select id="gender" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                <option value="woman model">여성 (Woman)</option>
-                <option value="man model">남성 (Man)</option>
-                <option value="people">모두 (All)</option>
-            </select>
-            <select id="pose" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                <option value="full body shot">전신 (Full Body)</option>
-                <option value="portrait face">상반신 (Portrait)</option>
-                <option value="dynamic action pose">역동적 포즈 (Action)</option>
-            </select>
-            <button onclick="fetchThreeImages()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-full font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20">
-                모델 호출
-            </button>
+            <div class="flex flex-wrap justify-center items-center gap-3">
+                <input type="text" id="customSearch" placeholder="직접 검색 (예: samurai, cyberpunk)" 
+                       class="bg-gray-900 border border-gray-800 rounded-full px-5 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-64">
+                
+                <select id="gender" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm outline-none">
+                    <option value="woman model">여성</option>
+                    <option value="man model">남성</option>
+                    <option value="people">모두</option>
+                </select>
+                
+                <select id="pose" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm outline-none">
+                    <option value="full body shot">전신</option>
+                    <option value="portrait face" selected>상반신</option>
+                    <option value="dynamic action pose">액션</option>
+                </select>
+
+                <button onclick="toggleBW()" id="bwBtn" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-full text-xs font-bold transition border border-gray-600">
+                    B&W OFF
+                </button>
+
+                <button onclick="fetchThreeImages()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-full font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20">
+                    불러오기
+                </button>
+            </div>
         </div>
     </header>
 
-    <main id="imageGrid" class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+    <main id="imageGrid" class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-20">
         </main>
+
+    <section class="max-w-7xl mx-auto border-t border-white/10 pt-10 mb-10">
+        <h2 class="text-sm font-bold tracking-widest text-gray-500 mb-6 uppercase">Pinned References</h2>
+        <div id="pinContainer" class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide min-h-[150px]">
+            <p id="pinPlaceholder" class="text-gray-700 italic text-sm self-center w-full text-center">마음에 드는 사진을 핀으로 고정하세요.</p>
+        </div>
+    </section>
 
     <div id="overlay" class="fixed inset-0 z-50 bg-black/98 hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeFS()">
         <img id="overlayImg" src="" class="max-w-full max-h-full object-contain shadow-2xl">
     </div>
 
     <script>
-        // 작가님이 주신 소중한 API KEY
         const API_KEY = 'GyPRdtANcIlgVwBA0UyGKyXnXfjIExjZdVfprscf3SocW5Ik9Ic2xWmX';
         const grid = document.getElementById('imageGrid');
+        const pinContainer = document.getElementById('pinContainer');
         const statusText = document.getElementById('statusText');
+        let pinnedImages = JSON.parse(localStorage.getItem('pinnedRefs')) || [];
 
-        // 초기 실행
-        window.onload = fetchThreeImages;
+        window.onload = () => {
+            renderPins();
+            fetchThreeImages();
+        };
+
+        // A: 흑백 모드 토글
+        function toggleBW() {
+            const isBW = document.body.classList.toggle('bw-mode');
+            document.getElementById('bwBtn').innerText = isBW ? "B&W ON" : "B&W OFF";
+            document.getElementById('bwBtn').classList.toggle('bg-white', isBW);
+            document.getElementById('bwBtn').classList.toggle('text-black', isBW);
+        }
 
         async function fetchThreeImages() {
-            statusText.innerText = "Status: Calling Models...";
+            statusText.innerText = "Status: Searching...";
             grid.innerHTML = '<div class="col-span-full flex justify-center py-20"><div class="loader w-10 h-10 border-4 border-gray-800 rounded-full"></div></div>';
             
             const gender = document.getElementById('gender').value;
             const pose = document.getElementById('pose').value;
-            const query = `${gender} ${pose}`;
+            const custom = document.getElementById('customSearch').value;
             
-            // 중복 방지: 랜덤 페이지 (1~100)
+            // C: 커스텀 키워드 우선 적용 로직
+            const query = custom ? `${custom} photography` : `${gender} ${pose}`;
             const randomPage = Math.floor(Math.random() * 100) + 1;
             const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=15&page=${randomPage}`;
 
             try {
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': API_KEY
-                    }
-                });
-
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                
+                const response = await fetch(url, { headers: { 'Authorization': API_KEY } });
                 const data = await response.json();
                 
                 if (data.photos && data.photos.length >= 3) {
-                    // 받아온 15개 중 무작위로 3개 선택
                     const shuffled = data.photos.sort(() => 0.5 - Math.random());
-                    renderImages(shuffled.slice(0, 3));
-                    statusText.innerText = "Status: Success (Real Photos)";
+                    renderGrid(shuffled.slice(0, 3));
+                    statusText.innerText = `Status: Showing "${query}"`;
                 } else {
-                    statusText.innerText = "Status: No images found.";
-                    grid.innerHTML = '<p class="col-span-full text-center">검색 결과가 없습니다. 조건을 바꿔보세요.</p>';
+                    statusText.innerText = "Status: No results.";
+                    grid.innerHTML = '<p class="col-span-full text-center py-10">결과가 없습니다. 다른 검색어를 입력해 보세요.</p>';
                 }
             } catch (error) {
-                console.error("API Fetch Error:", error);
-                statusText.innerText = `Status: Error (${error.message})`;
-                grid.innerHTML = `<p class="col-span-full text-center text-red-500">API 호출 실패! <br> 키가 유효하지 않거나 네트워크 문제입니다.</p>`;
+                statusText.innerText = "Status: Error.";
             }
         }
 
-        function renderImages(photos) {
+        function renderGrid(photos) {
             grid.innerHTML = '';
-            photos.forEach((photo, idx) => {
+            photos.forEach(photo => {
                 const card = document.createElement('div');
-                card.className = 'img-card relative bg-gray-900 rounded-lg overflow-hidden aspect-[3/4] cursor-zoom-in group';
+                card.className = 'img-card relative bg-gray-900 rounded-lg overflow-hidden aspect-[3/4] group';
                 
-                // Pexels의 large 화질 사용
                 card.innerHTML = `
-                    <img src="${photo.src.large}" 
-                         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                         onclick="openFS('${photo.src.original}')"
-                         onload="this.parentElement.classList.add('loaded')">
-                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-end p-4">
-                        <span class="text-[10px] text-gray-300 uppercase">Photographer: ${photo.photographer}</span>
+                    <img src="${photo.src.large}" class="w-full h-full object-cover cursor-zoom-in group-hover:scale-105" 
+                         onclick="openFS('${photo.src.original}')" onload="this.parentElement.classList.add('loaded')">
+                    
+                    <button onclick="pinImage('${photo.src.large}', '${photo.src.original}')" 
+                            class="absolute top-4 right-4 bg-black/50 hover:bg-blue-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+                        </svg>
+                    </button>
+                    
+                    <div class="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <span class="text-[10px] text-gray-400">Photo by ${photo.photographer}</span>
                     </div>
                 `;
                 grid.appendChild(card);
             });
         }
 
+        // B: 핀 기능 로직
+        function pinImage(thumb, original) {
+            if (pinnedImages.some(img => img.original === original)) return;
+            pinnedImages.unshift({ thumb, original });
+            if (pinnedImages.length > 10) pinnedImages.pop(); // 최대 10개 유지
+            saveAndRenderPins();
+        }
+
+        function unpinImage(original) {
+            pinnedImages = pinnedImages.filter(img => img.original !== original);
+            saveAndRenderPins();
+        }
+
+        function saveAndRenderPins() {
+            localStorage.setItem('pinnedRefs', JSON.stringify(pinnedImages));
+            renderPins();
+        }
+
+        function renderPins() {
+            if (pinnedImages.length === 0) {
+                document.getElementById('pinPlaceholder').classList.remove('hidden');
+                pinContainer.innerHTML = '';
+                return;
+            }
+            document.getElementById('pinPlaceholder').classList.add('hidden');
+            pinContainer.innerHTML = pinnedImages.map(img => `
+                <div class="relative flex-shrink-0 group">
+                    <img src="${img.thumb}" class="h-32 w-24 object-cover rounded shadow-lg cursor-zoom-in" onclick="openFS('${img.original}')">
+                    <button onclick="unpinImage('${img.original}')" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
+                          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
         function openFS(src) {
-            const overlay = document.getElementById('overlay');
             document.getElementById('overlayImg').src = src;
-            overlay.classList.replace('hidden', 'flex');
+            document.getElementById('overlay').classList.replace('hidden', 'flex');
             document.body.classList.add('fullscreen-active');
         }
 
