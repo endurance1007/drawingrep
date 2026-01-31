@@ -3,228 +3,393 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>지혜의 용 드로잉 연습실</title>
+    <title>지혜의 용 | 각색 워크스테이션 v1.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body.fullscreen-active { overflow: hidden; }
-        body.bw-mode img { filter: grayscale(100%) contrast(1.15); }
-        body.bw-mode .img-card:hover img { filter: grayscale(0%) contrast(1); }
-        
-        .img-card { opacity: 0; transform: translateY(10px); transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); border: 1px solid rgba(255,255,255,0.05); }
-        .img-card.loaded { opacity: 1; transform: translateY(0); }
-        
-        .loader { border-top-color: #3b82f6; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .dragon-gradient { background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        
-        /* 핀 이미지 애니메이션 */
-        #pinContainer img { transition: all 0.3s ease; }
-        #pinContainer img:hover { transform: scale(1.05); filter: brightness(1.2); }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        .hl-dialog { color: #60a5fa; font-weight: 600; }
+        .hl-sfx { color: #fbbf24; font-style: italic; }
+        .card-anim { animation: fadeIn 0.15s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        [contenteditable]:focus { outline: none; background: rgba(59, 130, 246, 0.05); }
+        .memo-input { background: transparent; border-bottom: 1px solid #333; font-size: 11px; padding: 2px 0; color: #888; width: 120px; outline: none; transition: all 0.2s; }
+        .memo-input:focus { border-bottom-color: #3b82f6; color: #fff; }
+        .overlay-active { overflow: hidden; }
+        .card-selected { border-color: #3b82f6 !important; background-color: #111 !important; }
+        .dragging { opacity: 0.5; border: 2px dashed #555; }
+        .img-dragging { opacity: 0.4; transform: scale(0.9); border: 2px solid #3b82f6; }
+        .img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 4px; }
+        .img-drag-over { background-color: rgba(59, 130, 246, 0.2) !important; border-color: #3b82f6 !important; }
+        ::selection { background: #2563eb; color: white; }
     </style>
 </head>
-<body class="bg-[#050505] text-gray-200 min-h-screen p-4 sm:p-10 font-sans">
+<body class="bg-[#050505] text-gray-200 h-screen overflow-hidden flex flex-col font-sans">
 
-    <header class="max-w-7xl mx-auto mb-10 border-b border-white/10 pb-8">
-        <div class="flex flex-col lg:flex-row justify-between items-center gap-6">
-            <div class="flex items-center gap-3">
-                <span class="text-4xl">🐲</span>
-                <div>
-                    <h1 class="text-2xl font-black tracking-tight dragon-gradient uppercase">지혜의 용 <span class="text-gray-400 font-light text-xl">드로잉 연습실</span></h1>
-                    <p id="statusText" class="text-[9px] text-gray-600 mt-1 uppercase tracking-[0.2em] font-mono">System: Optimized for Anatomy</p>
-                </div>
+    <header class="h-14 border-b border-white/10 flex items-center justify-between px-6 bg-[#080808] shrink-0">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🐲</span>
+            <h1 class="font-black tracking-tighter text-blue-500 uppercase">Dragon Adapter <span class="text-gray-600 font-light ml-2 text-xs">v1.7 Backup</span></h1>
+        </div>
+        <div class="flex gap-4 items-center">
+            <div class="flex gap-2 mr-4 border-r border-white/10 pr-4">
+                <button onclick="downloadBackup()" class="px-3 py-1.5 rounded bg-green-900/30 text-green-400 border border-green-900/50 text-[10px] font-bold hover:bg-green-900/50 transition flex items-center gap-1">
+                    💾 파일로 저장
+                </button>
+                <button onclick="document.getElementById('fileInput').click()" class="px-3 py-1.5 rounded bg-gray-800 text-gray-300 border border-gray-700 text-[10px] font-bold hover:bg-gray-700 transition flex items-center gap-1">
+                    📂 파일 불러오기
+                </button>
+                <input type="file" id="fileInput" class="hidden" accept=".json" onchange="loadBackup(this)">
             </div>
 
-            <div class="flex flex-wrap justify-center items-center gap-3">
-                <input type="text" id="customSearch" placeholder="키워드 직접 입력" 
-                       class="bg-gray-900 border border-gray-800 rounded-full px-5 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none w-44 transition-all">
-                
-                <select id="gender" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm outline-none cursor-pointer hover:bg-gray-800 transition">
-                    <option value="female solo model">여성 (Woman)</option>
-                    <option value="male solo model">남성 (Man)</option>
-                    <option value="person solo">모두 (Mixed)</option>
-                </select>
-                
-                <select id="pose" class="bg-gray-900 border border-gray-800 rounded-full px-4 py-2 text-sm outline-none cursor-pointer hover:bg-gray-800 transition">
-                    <option value="anatomy">Anatomy (근육/해부학)</option>
-                    <option value="full body standing pose">Full Body (전신)</option>
-                    <option value="portrait face close-up">Portrait (얼굴)</option>
-                    <option value="dynamic action movement">Action (역동)</option>
-                </select>
-
-                <button onclick="toggleBW()" id="bwBtn" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-full text-xs font-bold transition border border-gray-600">
-                    B&W OFF
-                </button>
-
-                <button onclick="fetchThreeImages()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-full font-bold transition-all active:scale-95 shadow-lg shadow-blue-900/40">
-                    새 모델 호출
-                </button>
+            <div class="text-[10px] text-gray-600 flex gap-2">
+                <span>Undo: Ctrl+Z</span>
+                <span>Redo: Ctrl+Y</span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="exportToNotion()" class="px-4 py-1.5 rounded-full bg-blue-600 text-white text-[11px] font-bold hover:bg-blue-500 transition">노션 내보내기</button>
             </div>
         </div>
     </header>
 
-    <main id="imageGrid" class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-20">
-        </main>
+    <main class="flex flex-1 overflow-hidden">
+        
+        <section class="w-1/4 flex flex-col border-r border-white/5 bg-[#080808]">
+            <div class="h-1/2 flex flex-col border-b border-white/10">
+                <div class="p-2 bg-white/5 text-[9px] uppercase tracking-widest text-gray-500 font-bold flex justify-between">
+                    <span>Original History</span>
+                    <span class="text-xs">🔒</span>
+                </div>
+                <textarea id="originalView" 
+                          class="flex-1 bg-[#0a0a0a] p-4 outline-none resize-none leading-relaxed text-gray-500 text-xs border-none select-text"
+                          readonly
+                          placeholder="작업 히스토리가 여기에 누적됩니다."></textarea>
+            </div>
 
-    <section class="max-w-7xl mx-auto border-t border-white/5 pt-10 mb-10">
-        <h2 class="text-[10px] font-bold tracking-[0.4em] text-gray-700 mb-6 uppercase">Pinned References</h2>
-        <div id="pinContainer" class="flex gap-4 overflow-x-auto pb-6 scrollbar-hide min-h-[140px]">
-            <p id="pinPlaceholder" class="text-gray-800 italic text-xs self-center w-full text-center">영감을 주는 사진을 핀으로 고정해 두세요.</p>
-        </div>
-    </section>
+            <div class="h-1/2 flex flex-col">
+                <div class="p-2 bg-blue-900/10 text-[9px] uppercase tracking-widest text-blue-400 font-bold">
+                    Active Input
+                </div>
+                <textarea id="sourceInput" 
+                          class="flex-1 bg-transparent p-4 outline-none resize-none leading-relaxed text-gray-300 focus:text-white text-sm border-none placeholder-gray-700"
+                          placeholder="추가할 텍스트 입력..."></textarea>
+                
+                <div class="p-3 grid grid-cols-1 gap-2 border-t border-white/5 bg-[#0a0a0a]">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="processSource('append')" class="py-2 bg-gray-800 hover:bg-blue-900 rounded text-[11px] font-bold transition text-blue-100">맨 뒤에 추가</button>
+                        <button onclick="processSource('insert')" class="py-2 bg-gray-800 hover:bg-yellow-900 rounded text-[11px] font-bold transition text-yellow-100">선택 컷 뒤 삽입</button>
+                    </div>
+                    <button onclick="processSource('overwrite')" class="py-2 bg-red-900/20 hover:bg-red-900 text-red-500 hover:text-white rounded text-[11px] font-bold transition">⚠️ 전체 초기화</button>
+                </div>
+            </div>
+        </section>
 
-    <div id="overlay" class="fixed inset-0 z-50 bg-black/98 hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeFS()">
-        <img id="overlayImg" src="" class="max-w-full max-h-full object-contain shadow-2xl rounded-sm">
-        <p class="absolute bottom-6 text-gray-600 text-[10px] uppercase tracking-widest">Click anywhere to return</p>
+        <section class="flex-1 flex flex-col" onclick="clearSelection(event)">
+            <div class="p-3 bg-black/40 text-[9px] uppercase tracking-widest text-blue-500 font-bold flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <span>Adapter Board <span id="selectionMsg" class="ml-2 text-gray-500 normal-case font-normal hidden">선택 컷 뒤 삽입 대기</span></span>
+                    
+                    <div class="flex items-center gap-1 bg-gray-900 rounded-md border border-gray-800 px-2 py-0.5 ml-4" onclick="event.stopPropagation()">
+                        <input id="boardSearchInput" type="text" placeholder="단어 검색..." 
+                               class="bg-transparent border-none text-xs text-white w-24 outline-none placeholder-gray-600"
+                               onkeydown="if(event.key === 'Enter') findNext()">
+                        <button onclick="findPrev()" class="text-gray-500 hover:text-white px-1 text-xs">▲</button>
+                        <button onclick="findNext()" class="text-gray-500 hover:text-white px-1 text-xs">▼</button>
+                        <span id="searchStatus" class="text-[9px] text-gray-600 w-8 text-center ml-1">0/0</span>
+                    </div>
+                </div>
+                <span id="panelCount">0 Cuts</span>
+            </div>
+            
+            <div id="panelContainer" class="flex-1 overflow-y-auto p-10 space-y-6 max-w-4xl mx-auto w-full">
+                </div>
+        </section>
+    </main>
+
+    <div id="imgOverlay" class="fixed inset-0 z-50 bg-black/95 hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeImgFS()">
+        <img id="fsImg" src="" class="max-w-full max-h-full object-contain shadow-2xl">
     </div>
 
     <script>
-        const API_KEY = 'GyPRdtANcIlgVwBA0UyGKyXnXfjIExjZdVfprscf3SocW5Ik9Ic2xWmX';
-        const grid = document.getElementById('imageGrid');
-        const pinContainer = document.getElementById('pinContainer');
-        const statusText = document.getElementById('statusText');
-        let pinnedImages = JSON.parse(localStorage.getItem('pinnedRefs')) || [];
+        const originalView = document.getElementById('originalView');
+        const sourceInput = document.getElementById('sourceInput');
+        const panelContainer = document.getElementById('panelContainer');
+        const panelCountDisplay = document.getElementById('panelCount');
+        const selectionMsg = document.getElementById('selectionMsg');
+        const boardSearchInput = document.getElementById('boardSearchInput');
+        const searchStatus = document.getElementById('searchStatus');
+        
+        let searchMatches = [];
+        let currentMatchIndex = -1;
+        const MAX_IMAGES = 10;
+        let activeCard = null;
+        const historyStack = [];
+        let historyIndex = -1;
+        let dragType = null;
+        let dragImgEl = null;
 
         window.onload = () => {
-            renderPins();
-            fetchThreeImages();
+            const savedData = localStorage.getItem('dragonAdapter_v17_board');
+            const savedOriginal = localStorage.getItem('dragonAdapter_v17_original');
+            if (savedOriginal) originalView.value = savedOriginal;
+            if (savedData) {
+                panelContainer.innerHTML = savedData;
+                reattachEvents(); 
+                updateStats();
+                const inputs = panelContainer.querySelectorAll('input.memo-input');
+                inputs.forEach(input => input.value = input.getAttribute('value'));
+                const checks = panelContainer.querySelectorAll('input[type="checkbox"]');
+                checks.forEach(chk => chk.checked = chk.getAttribute('checked') === 'true');
+                saveState(); 
+            }
         };
 
-        function toggleBW() {
-            const isBW = document.body.classList.toggle('bw-mode');
-            const btn = document.getElementById('bwBtn');
-            btn.innerText = isBW ? "B&W ON" : "B&W OFF";
-            btn.className = isBW 
-                ? "bg-white text-black px-4 py-2 rounded-full text-xs font-bold transition border border-white" 
-                : "bg-gray-800 text-white px-4 py-2 rounded-full text-xs font-bold transition border border-gray-600";
+        // --- NEW: File Backup System ---
+
+        function downloadBackup() {
+            prepareStateForSave(); // 현재 상태를 HTML 속성에 굽기
+            
+            const backupData = {
+                version: "1.7",
+                date: new Date().toLocaleString(),
+                boardHTML: panelContainer.innerHTML,
+                originalText: originalView.value
+            };
+
+            const jsonString = JSON.stringify(backupData);
+            const blob = new Blob([jsonString], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Dragon_Project_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
-        async function fetchThreeImages() {
-            statusText.innerText = "상태: 지능형 쿼리 생성 중...";
-            grid.innerHTML = '<div class="col-span-full flex justify-center py-20"><div class="loader w-10 h-10 border-4 border-gray-800 rounded-full"></div></div>';
-            
-            const gender = document.getElementById('gender').value;
-            const pose = document.getElementById('pose').value;
-            const custom = document.getElementById('customSearch').value;
-            
-            let query = "";
-            if (custom) {
-                query = `${custom} solo`;
-            } else {
-                if (pose === "anatomy") {
-                    // 성별에 따른 최적화 키워드 매핑
-                    if (gender.includes("female")) {
-                        query = "female athlete fitness body artistic photography";
-                    } else if (gender.includes("male")) {
-                        query = "male muscular physique anatomy photography";
+        function loadBackup(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    if (data.boardHTML !== undefined && data.originalText !== undefined) {
+                        // 현재 상태 저장 (Undo 가능하도록)
+                        saveState();
+                        
+                        // 데이터 복원
+                        panelContainer.innerHTML = data.boardHTML;
+                        originalView.value = data.originalText;
+                        
+                        // 기능 복구
+                        reattachEvents();
+                        updateStats();
+                        
+                        // Input 값 복구
+                        const inputs = panelContainer.querySelectorAll('input.memo-input');
+                        inputs.forEach(input => input.value = input.getAttribute('value'));
+                        const checks = panelContainer.querySelectorAll('input[type="checkbox"]');
+                        checks.forEach(chk => chk.checked = chk.getAttribute('checked') === 'true');
+
+                        alert("프로젝트를 성공적으로 불러왔습니다!");
                     } else {
-                        query = "muscular physique artistic anatomy";
+                        alert("올바르지 않은 파일 형식입니다.");
                     }
-                } else {
-                    query = `${gender} ${pose}`;
+                } catch (err) {
+                    console.error(err);
+                    alert("파일을 읽는 중 오류가 발생했습니다.");
                 }
-            }
-
-            const maxPage = (pose === "anatomy" && gender.includes("female")) ? 20 : 60;
-            const randomPage = Math.floor(Math.random() * maxPage) + 1;
-            const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=25&page=${randomPage}`;
-
-            try {
-                const response = await fetch(url, { headers: { 'Authorization': API_KEY } });
-                const data = await response.json();
-                
-                if (data.photos && data.photos.length >= 3) {
-                    let filtered = data.photos;
-                    // 여성 필터 시 남성 오탐지 방지 로직
-                    if (gender.includes("female")) {
-                        filtered = data.photos.filter(p => !p.url.toLowerCase().includes("-man-") && !p.url.toLowerCase().includes("-male-"));
-                    }
-                    
-                    const finalSelection = filtered.length >= 3 ? filtered : data.photos;
-                    const shuffled = finalSelection.sort(() => 0.5 - Math.random());
-                    renderGrid(shuffled.slice(0, 3));
-                    statusText.innerText = `상태: ${query} 소싱 완료`;
-                } else {
-                    statusText.innerText = "상태: 일치하는 모델 없음";
-                    grid.innerHTML = '<p class="col-span-full text-center py-10 text-gray-700">결과가 부족합니다. 키워드를 바꿔보세요.</p>';
-                }
-            } catch (error) {
-                statusText.innerText = "상태: 통신 오류";
-            }
+            };
+            reader.readAsText(file);
+            input.value = ''; // 같은 파일 다시 선택 가능하도록 초기화
         }
 
-        function renderGrid(photos) {
-            grid.innerHTML = '';
-            photos.forEach(photo => {
-                const card = document.createElement('div');
-                card.className = 'img-card relative bg-[#0a0a0a] rounded-sm overflow-hidden aspect-[3/4] group shadow-2xl';
-                
-                card.innerHTML = `
-                    <img src="${photo.src.large}" class="w-full h-full object-cover cursor-zoom-in group-hover:scale-105 transition-all duration-1000" 
-                         onclick="openFS('${photo.src.original}')" onload="this.parentElement.classList.add('loaded')">
-                    
-                    <button onclick="pinImage('${photo.src.large}', '${photo.src.original}')" 
-                            class="absolute top-4 right-4 bg-black/60 hover:bg-blue-600 text-white p-2.5 rounded-full opacity-0 group-hover:opacity-100 transition-all z-10 backdrop-blur-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
-                        </svg>
-                    </button>
-                    
-                    <div class="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span class="text-[8px] text-gray-500 uppercase font-mono tracking-tighter">${photo.photographer}</span>
-                    </div>
-                `;
-                grid.appendChild(card);
+        // --- Auto Save (Local Storage) ---
+        function saveToLocal() {
+            prepareStateForSave();
+            try {
+                localStorage.setItem('dragonAdapter_v17_board', panelContainer.innerHTML);
+                localStorage.setItem('dragonAdapter_v17_original', originalView.value);
+            } catch (e) { }
+        }
+
+        function prepareStateForSave() {
+            const inputs = panelContainer.querySelectorAll('input.memo-input');
+            inputs.forEach(input => input.setAttribute('value', input.value));
+            const checks = panelContainer.querySelectorAll('input[type="checkbox"]');
+            checks.forEach(chk => chk.checked ? chk.setAttribute('checked', 'true') : chk.removeAttribute('checked'));
+        }
+
+        function saveState() {
+            if (historyIndex < historyStack.length - 1) historyStack.splice(historyIndex + 1);
+            prepareStateForSave();
+            historyStack.push(panelContainer.innerHTML);
+            historyIndex++;
+            saveToLocal();
+        }
+
+        function restoreState(index) {
+            if (index < 0 || index >= historyStack.length) return;
+            panelContainer.innerHTML = historyStack[index];
+            historyIndex = index;
+            const inputs = panelContainer.querySelectorAll('input.memo-input');
+            inputs.forEach(input => input.value = input.getAttribute('value') || '');
+            const checks = panelContainer.querySelectorAll('input[type="checkbox"]');
+            checks.forEach(chk => chk.checked = chk.getAttribute('checked') === 'true');
+            reattachEvents(); updateStats();
+            searchMatches = []; searchStatus.innerText = "0/0";
+        }
+
+        function reattachEvents() {
+            const cards = panelContainer.querySelectorAll('.group');
+            cards.forEach(card => {
+                card.onclick = (e) => selectCard(e, card);
+                addCardDragEvents(card);
+                const imgWrappers = card.querySelectorAll('.group\\/img');
+                imgWrappers.forEach(wrapper => {
+                     const img = wrapper.querySelector('img');
+                     if (img) wrapper.onclick = (e) => { e.stopPropagation(); openImgFS(img.src); };
+                });
             });
         }
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); restoreState(historyIndex - 1); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); restoreState(historyIndex + 1); }
+        });
 
-        function pinImage(thumb, original) {
-            if (pinnedImages.some(img => img.original === original)) return;
-            pinnedImages.unshift({ thumb, original });
-            if (pinnedImages.length > 15) pinnedImages.pop();
-            saveAndRenderPins();
+        // --- Core Functions ---
+        function highlightText(text) {
+            if (!text) return "";
+            text = text.replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, '<span class="hl-dialog">$&</span>');
+            text = text.replace(/[\(\[][가-힣a-zA-Z\s]+[\)\]]/g, '<span class="hl-sfx">$&</span>');
+            return text;
         }
-
-        function unpinImage(original) {
-            pinnedImages = pinnedImages.filter(img => img.original !== original);
-            saveAndRenderPins();
-        }
-
-        function saveAndRenderPins() {
-            localStorage.setItem('pinnedRefs', JSON.stringify(pinnedImages));
-            renderPins();
-        }
-
-        function renderPins() {
-            if (pinnedImages.length === 0) {
-                document.getElementById('pinPlaceholder').classList.remove('hidden');
-                pinContainer.innerHTML = '';
-                return;
+        function processSource(mode) {
+            const text = sourceInput.value.trim();
+            if (!text && mode !== 'overwrite') return;
+            saveState();
+            if (mode === 'overwrite') {
+                if (panelContainer.children.length > 0 && !confirm("모든 작업을 초기화하시겠습니까?")) return;
+                originalView.value = text; panelContainer.innerHTML = ''; activeCard = null;
+            } else {
+                const timestamp = new Date().toLocaleTimeString();
+                const separator = originalView.value ? `\n\n--- Added [${timestamp}] ---\n` : "";
+                originalView.value += separator + text; originalView.scrollTop = originalView.scrollHeight;
             }
-            document.getElementById('pinPlaceholder').classList.add('hidden');
-            pinContainer.innerHTML = pinnedImages.map(img => `
-                <div class="relative flex-shrink-0 group">
-                    <img src="${img.thumb}" class="h-28 w-20 object-cover rounded shadow-lg cursor-zoom-in" onclick="openFS('${img.original}')">
-                    <button onclick="unpinImage('${img.original}')" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
-                          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                        </svg>
-                    </button>
+            const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.length > 0);
+            if (mode === 'insert' && activeCard) {
+                let refNode = activeCard; sentences.forEach(s => { const newCard = createCardElement(s); panelContainer.insertBefore(newCard, refNode.nextSibling); refNode = newCard; });
+            } else {
+                sentences.forEach(s => { const newCard = createCardElement(s); panelContainer.appendChild(newCard); });
+            }
+            updateStats(); if (mode !== 'overwrite') sourceInput.value = ''; 
+        }
+        function createCardElement(text) {
+            const card = document.createElement('div');
+            card.className = 'card-anim bg-[#0d0d0d] border border-white/5 rounded-xl p-5 hover:border-white/10 transition-all group relative cursor-move';
+            card.draggable = true; card.onclick = (e) => selectCard(e, card); addCardDragEvents(card);
+            card.innerHTML = `
+                <div class="flex flex-col gap-3 pointer-events-none">
+                    <div class="flex justify-between items-center pointer-events-auto">
+                        <div class="flex items-center gap-2 cursor-grab active:cursor-grabbing">
+                            <span class="text-gray-600">☰</span>
+                            <span class="text-[10px] font-mono text-blue-900 font-bold cut-num">Cut 00</span>
+                        </div>
+                        <div class="flex gap-3 opacity-40 group-hover:opacity-100 transition-opacity">
+                            <label class="flex items-center gap-1 text-[10px] cursor-pointer hover:text-blue-400">
+                                <input type="checkbox" onchange="toggleMemo(this, '앵글/샷')" class="hidden"> 앵글/샷
+                            </label>
+                            <label class="flex items-center gap-1 text-[10px] cursor-pointer hover:text-blue-400">
+                                <input type="checkbox" onchange="toggleMemo(this, '배경')" class="hidden"> 배경
+                            </label>
+                            <label class="flex items-center gap-1 text-[10px] cursor-pointer hover:text-blue-400">
+                                <input type="checkbox" onchange="toggleMemo(this, '참고')" class="hidden"> 참고
+                            </label>
+                        </div>
+                    </div>
+                    <div class="flex gap-5 pointer-events-auto">
+                        <div class="w-32 shrink-0 flex flex-col gap-2">
+                             <div class="img-container img-grid bg-black/50 rounded border border-white/5 min-h-[60px] p-1 transition-colors"
+                                  ondragover="imgContainerDragOver(event)" ondrop="imgContainerDrop(event, this)"></div>
+                             <button onclick="event.stopPropagation(); triggerImageUpload(this)" class="text-[9px] bg-gray-800 hover:bg-gray-700 w-full py-1 rounded text-gray-400 hover:text-white transition">+ Add Image</button>
+                        </div>
+                        <div class="flex-1 space-y-3">
+                            <div class="memo-area flex flex-wrap gap-x-4 gap-y-1"></div>
+                            <div class="content-area text-[15px] leading-relaxed text-gray-300 outline-none min-h-[1.5em]" 
+                                 contenteditable="true" onpaste="handlePaste(event, this)" onblur="this.innerHTML = highlightText(this.innerText)" onfocus="saveState()" onclick="event.stopPropagation()">
+                                ${highlightText(text)}
+                            </div>
+                            <div class="flex justify-between items-center pt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div class="flex gap-4">
+                                    <button onmousedown="event.preventDefault();" onclick="event.stopPropagation(); mergeUp(this)" class="text-[9px] text-gray-600 hover:text-blue-400 font-bold uppercase tracking-tighter transition-colors">Merge Up</button>
+                                    <button onmousedown="event.preventDefault();" onclick="event.stopPropagation(); splitAtCursor(this)" class="text-[9px] text-gray-600 hover:text-yellow-400 font-bold uppercase tracking-tighter transition-colors">Split at Cursor</button>
+                                </div>
+                                <button onmousedown="event.preventDefault();" onclick="event.stopPropagation(); deleteCard(this)" class="text-[9px] text-red-900 hover:text-red-500 font-bold transition-colors">Delete</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            `).join('');
+            `;
+            return card;
         }
-
-        function openFS(src) {
-            document.getElementById('overlayImg').src = src;
-            document.getElementById('overlay').classList.replace('hidden', 'flex');
-            document.body.classList.add('fullscreen-active');
+        function compressImage(file, callback) {
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image(); img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas'); const MAX_WIDTH = 600; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); callback(dataUrl);
+                }
+            }
         }
-
-        function closeFS() {
-            document.getElementById('overlay').classList.replace('flex', 'hidden');
-            document.body.classList.remove('fullscreen-active');
+        function addImageToCard(card, src) {
+            const container = card.querySelector('.img-container'); if (!container || container.children.length >= MAX_IMAGES) return false;
+            const wrapper = document.createElement('div'); wrapper.className = "relative aspect-square bg-gray-900 rounded overflow-hidden group/img cursor-pointer";
+            wrapper.setAttribute('draggable', 'true'); wrapper.setAttribute('ondragstart', 'imgDragStart(event, this)'); wrapper.setAttribute('ondragend', 'imgDragEnd(event, this)');
+            wrapper.setAttribute('onclick', "event.stopPropagation(); openImgFS(this.querySelector('img').src)");
+            wrapper.innerHTML = ` <img src="${src}" class="w-full h-full object-cover hover:opacity-80 transition pointer-events-none"> <button onclick="removeImage(event, this)" class="absolute top-0 right-0 bg-red-600 text-white w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover/img:opacity-100 transition">×</button> `;
+            container.appendChild(wrapper); return true;
         }
+        function triggerImageUpload(btn) {
+            const card = btn.closest('.group'); const container = card.querySelector('.img-container'); if (container.children.length >= MAX_IMAGES) { alert(`최대 ${MAX_IMAGES}장까지입니다.`); return; }
+            const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = e => { const file = e.target.files[0]; if (file) { compressImage(file, (compressedSrc) => { saveState(); addImageToCard(card, compressedSrc); }); } }; input.click();
+        }
+        function handlePaste(e, element) {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let item of items) { if (item.kind === 'file' && item.type.startsWith('image/')) { e.preventDefault(); const card = element.closest('.group'); const container = card.querySelector('.img-container'); if (container.children.length >= MAX_IMAGES) { alert("이미지 개수 초과!"); return; } const blob = item.getAsFile(); compressImage(blob, (compressedSrc) => { saveState(); addImageToCard(card, compressedSrc); }); } }
+        }
+        function removeImage(e, btn) { e.stopPropagation(); saveState(); btn.parentElement.remove(); }
+        function splitAtCursor(btn) {
+            saveState(); const card = btn.closest('.group'); const contentArea = card.querySelector('.content-area'); const selection = window.getSelection(); if (!selection.rangeCount) return; const range = selection.getRangeAt(0); if (!contentArea.contains(range.commonAncestorContainer)) return;
+            const rangeToEnd = document.createRange(); rangeToEnd.setStart(range.endContainer, range.endOffset); rangeToEnd.setEnd(contentArea, contentArea.childNodes.length); const postText = rangeToEnd.toString(); rangeToEnd.deleteContents(); contentArea.innerHTML = highlightText(contentArea.innerText);
+            const newCard = createCardElement(postText); panelContainer.insertBefore(newCard, card.nextSibling); updateStats();
+        }
+        function mergeUp(btn) {
+            const current = btn.closest('.group'); const prev = current.previousElementSibling; if (prev) { const prevCount = prev.querySelector('.img-container').children.length; const curCount = current.querySelector('.img-container').children.length; if (prevCount + curCount > MAX_IMAGES) { alert("이미지 10장 초과! 병합 불가."); return; } saveState(); const prevArea = prev.querySelector('.content-area'); prevArea.innerText += " " + current.querySelector('.content-area').innerText; prevArea.innerHTML = highlightText(prevArea.innerText); const curImages = current.querySelectorAll('.img-container .group\\/img'); curImages.forEach(wrapper => prev.querySelector('.img-container').appendChild(wrapper)); current.remove(); updateStats(); }
+        }
+        function deleteCard(btn) { saveState(); btn.closest('.group').remove(); updateStats(); }
+        function selectCard(e, card) { if (activeCard) activeCard.classList.remove('card-selected'); activeCard = card; activeCard.classList.add('card-selected'); selectionMsg.classList.remove('hidden'); selectionMsg.innerText = `${card.querySelector('.cut-num').innerText} 뒤에 삽입됩니다.`; }
+        function clearSelection(e) { if (e.target.id === 'panelContainer' || e.target.tagName === 'SECTION') { if (activeCard) activeCard.classList.remove('card-selected'); activeCard = null; selectionMsg.classList.add('hidden'); } }
+        function toggleMemo(checkbox, label) { saveState(); const memoArea = checkbox.closest('.group').querySelector('.memo-area'); if (checkbox.checked) { const input = document.createElement('input'); input.className = 'memo-input'; input.placeholder = `${label}...`; input.dataset.type = label; input.onclick = (e) => e.stopPropagation(); input.onfocus = () => saveState(); memoArea.appendChild(input); checkbox.parentElement.classList.add('text-blue-500', 'opacity-100'); input.focus(); } else { const input = memoArea.querySelector(`input[data-type="${label}"]`); if (input) input.remove(); checkbox.parentElement.classList.remove('text-blue-500'); } }
+        function updateStats() { const cards = panelContainer.querySelectorAll('.group'); panelCountDisplay.innerText = `${cards.length} Cuts`; cards.forEach((card, i) => { card.querySelector('.cut-num').innerText = `Cut ${String(i + 1).padStart(2, '0')}`; }); }
+        function openImgFS(src) { document.getElementById('fsImg').src = src; document.getElementById('imgOverlay').classList.replace('hidden', 'flex'); document.body.classList.add('overlay-active'); }
+        function closeImgFS() { document.getElementById('imgOverlay').classList.replace('flex', 'hidden'); document.body.classList.remove('overlay-active'); }
+        function buildSearchIndex(term) { searchMatches = []; if (!term) return; const cards = panelContainer.querySelectorAll('.content-area'); cards.forEach((area) => { const walker = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, null, false); let node; while (node = walker.nextNode()) { const text = node.nodeValue; const regex = new RegExp(term, 'gi'); let match; while ((match = regex.exec(text)) !== null) { searchMatches.push({ node: node, start: match.index, end: match.index + term.length, card: area.closest('.group') }); } } }); }
+        function findNext() { const term = boardSearchInput.value.trim(); if (!term) return; if (searchMatches.length === 0 || !searchMatches[0].node.nodeValue.toLowerCase().includes(term.toLowerCase())) { buildSearchIndex(term); currentMatchIndex = -1; } if (searchMatches.length === 0) { alert("검색 결과가 없습니다."); updateSearchStatus(0, 0); return; } if (currentMatchIndex >= searchMatches.length - 1) { alert("다음 단어는 없습니다."); return; } currentMatchIndex++; highlightMatch(currentMatchIndex); }
+        function findPrev() { const term = boardSearchInput.value.trim(); if (!term) return; if (searchMatches.length === 0) { buildSearchIndex(term); currentMatchIndex = searchMatches.length; } if (searchMatches.length === 0) { alert("검색 결과가 없습니다."); return; } if (currentMatchIndex <= 0) { alert("이전 단어는 없습니다."); return; } currentMatchIndex--; highlightMatch(currentMatchIndex); }
+        function highlightMatch(index) { const match = searchMatches[index]; if (!match) return; match.card.scrollIntoView({ behavior: 'smooth', block: 'center' }); const selection = window.getSelection(); const range = document.createRange(); try { range.setStart(match.node, match.start); range.setEnd(match.node, match.end); selection.removeAllRanges(); selection.addRange(range); } catch (e) { buildSearchIndex(boardSearchInput.value); currentMatchIndex = -1; alert("문서가 변경되었습니다. 다시 검색해주세요."); } updateSearchStatus(index + 1, searchMatches.length); }
+        function updateSearchStatus(current, total) { searchStatus.innerText = `${current}/${total}`; }
+        document.addEventListener('input', (e) => { if (e.target.classList.contains('content-area')) { searchMatches = []; currentMatchIndex = -1; searchStatus.innerText = "0/0"; } });
+        function imgDragStart(e, wrapper) { e.stopPropagation(); saveState(); dragType = 'image'; dragImgEl = wrapper; e.dataTransfer.effectAllowed = 'move'; wrapper.classList.add('img-dragging'); }
+        function imgDragEnd(e, wrapper) { e.stopPropagation(); dragType = null; dragImgEl = null; wrapper.classList.remove('img-dragging'); document.querySelectorAll('.img-container').forEach(el => el.classList.remove('img-drag-over')); }
+        function imgContainerDragOver(e) { if (dragType === 'image') { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.add('img-drag-over'); } }
+        function imgContainerDrop(e, container) { e.stopPropagation(); e.preventDefault(); container.classList.remove('img-drag-over'); if (dragType === 'image' && dragImgEl) { const sourceContainer = dragImgEl.parentElement; if (sourceContainer !== container && container.children.length >= MAX_IMAGES) { alert(`이동 불가 (최대 ${MAX_IMAGES}장)`); return; } const targetWrapper = e.target.closest('.group\\/img'); if (targetWrapper && container.contains(targetWrapper)) container.insertBefore(dragImgEl, targetWrapper); else container.appendChild(dragImgEl); updateStats(); } }
+        function addCardDragEvents(card) { card.addEventListener('dragstart', function(e) { if (dragType === 'image') { e.preventDefault(); return; } dragType = 'card'; saveState(); dragCardSrc = this; e.dataTransfer.effectAllowed = 'move'; this.classList.add('card-dragging'); }); card.addEventListener('dragover', function(e) { if (dragType === 'card') e.preventDefault(); return false; }); card.addEventListener('dragenter', function() { if (dragType === 'card') this.classList.add('border-blue-500'); }); card.addEventListener('dragleave', function() { if (dragType === 'card') this.classList.remove('border-blue-500'); }); card.addEventListener('drop', function(e) { if (dragType === 'card') { e.stopPropagation(); if (dragCardSrc !== this) { const allCards = [...panelContainer.children]; if (allCards.indexOf(dragCardSrc) < allCards.indexOf(this)) this.after(dragCardSrc); else this.before(dragCardSrc); updateStats(); } } return false; }); card.addEventListener('dragend', function() { dragType = null; this.classList.remove('card-dragging'); panelContainer.querySelectorAll('.group').forEach(c => c.classList.remove('border-blue-500')); }); }
+        function exportToNotion() { let markdown = `# 각색 원고 (${new Date().toLocaleDateString()})\n\n`; panelContainer.querySelectorAll('.group').forEach(card => { const cut = card.querySelector('.cut-num').innerText; const text = card.querySelector('.content-area').innerText; const memos = Array.from(card.querySelectorAll('.memo-input')).map(i => `[${i.dataset.type}: ${i.value}]`).join(' '); markdown += `### ${cut} ${memos}\n${text}\n\n`; }); const blob = new Blob([markdown], { type: 'text/markdown' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Dragon_Cut_Export_${Date.now()}.md`; a.click(); }
     </script>
 </body>
 </html>
